@@ -13,6 +13,14 @@ const typeDefs = gql`
     user: User!
   }
 
+  type CheckPayload {
+    user: User!
+  }
+
+  input CheckUserInput {
+    token: String!
+  }
+
   input SignupInput {
     name: String!
     email: String!
@@ -25,10 +33,11 @@ const typeDefs = gql`
   }
 
   type Query {
-    getUser(id: ID!): User
+    getUser(token: String!): User
   }
 
   type Mutation {
+    checkUser(input: CheckUserInput!): CheckPayload
     signup(input: SignupInput!): AuthPayload
     login(input: LoginInput!): AuthPayload
   }

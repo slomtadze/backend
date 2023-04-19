@@ -4,17 +4,32 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const resolvers = {
-  Query: {
-    getUser: async (_, { id }) => {
+  Query: {},
+  Mutation: {
+    checkUser: async (_, { input }) => {
+      const { token } = input;
+
+      if (!token) {
+        throw new Error("User is not authorized");
+      }
       try {
-        const user = await User.findById(id);
+        const decodedToken = jwt.verify(token, process.env.SECRET);
+
+        const user = await User.findOne({ _id: decodedToken._id });
+        if (!user) {
+          throw new Error("Could not find a user!!!");
+        }
+        user.count += 1;
+
+        await user.save();
         return user;
       } catch (error) {
-        throw new Error("Failed to fetch user");
+        if (error.name === "TokenExpiredError") {
+          throw new Error("Session has expired. Please login.");
+        }
+        throw new Error(error.message);
       }
     },
-  },
-  Mutation: {
     signup: async (_, { input }) => {
       try {
         const { name, email, password } = input;
@@ -56,7 +71,6 @@ const resolvers = {
         user.count += 1;
 
         await user.save();
-        console.log(user);
         const token = jwt.sign({ userId: user._id }, process.env.SECRET, {
           expiresIn: process.env.EXP_TIME,
         });
