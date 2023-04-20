@@ -14,15 +14,17 @@ const resolvers = {
       }
       try {
         const decoded = jwt.verify(token, process.env.SECRET);
-
-        const user = await User.findOne({ _id: decoded._Id });
+        /* console.log(decoded.userId) */
+        const user = await User.findOne({ _id: decoded.userId });
+        
         if (!user) {
-          console.log(decoded._Id)
+          throw new Error("User does not exist")
         }
+        
         user.count += 1;
 
         await user.save();
-        console.log(user)
+        
         return {user};
       } catch (error) {
         if (error.name === "TokenExpiredError") {
