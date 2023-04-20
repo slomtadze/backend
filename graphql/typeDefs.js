@@ -8,6 +8,11 @@ const typeDefs = gql`
     count: Int!
   }
 
+  type Subscription {
+    userCountUpdated: Int!
+  }
+  
+
   type AuthPayload {
     token: String!
     user: User!

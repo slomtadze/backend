@@ -2,9 +2,18 @@ require("dotenv").config();
 const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { PubSub } = require("graphql-subscriptions");
+
+const pubsub = new PubSub();
+
 
 const resolvers = {
   Query: {},
+  Subscription: {
+    userCountUpdated: {
+      subscribe: () => pubsub.asyncIterator("USER_COUNT_UPDATED"),
+    },
+  },
   Mutation: {
     checkUser: async (_, { input }) => {
       const { token } = input;
