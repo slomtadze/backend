@@ -13,16 +13,17 @@ const resolvers = {
         throw new Error("User is not authorized");
       }
       try {
-        const decodedToken = jwt.verify(token, process.env.SECRET);
+        const decoded = jwt.verify(token, process.env.SECRET);
 
-        const user = await User.findOne({ _id: decodedToken._id });
+        const user = await User.findOne({ _id: decoded._Id });
         if (!user) {
-          throw new Error("Could not find a user!!!");
+          console.log(decoded._Id)
         }
         user.count += 1;
 
         await user.save();
-        return user;
+        console.log(user)
+        return {user};
       } catch (error) {
         if (error.name === "TokenExpiredError") {
           throw new Error("Session has expired. Please login.");
