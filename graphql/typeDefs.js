@@ -15,15 +15,21 @@ const typeDefs = `
     refreshToken: String!
     user: User!
   }
-
+  
   type CheckPayload {
     user: User!
   }
 
-  union TokenInput = token | refreshToken
+  type RefreshTokenPayload {
+    token: String!
+    user: User
+  }
 
   input CheckUserInput {
-    input: TokenInput!
+    token: String!
+  }
+  input RefreshTokenInput {
+    refreshToken: String!
   }
 
   input SignupInput {
@@ -43,6 +49,7 @@ const typeDefs = `
 
   type Mutation {
     checkUser(input: CheckUserInput!): CheckPayload
+    refreshToken(input: RefreshTokenInput!): RefreshTokenPayload
     signup(input: SignupInput!): AuthPayload
     login(input: LoginInput!): AuthPayload
   }

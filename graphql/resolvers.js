@@ -14,7 +14,7 @@ const generateTokens = (_id) => {
     expiresIn: '5m',
   });
   const refreshToken = jwt.sign({ userId: _id }, process.env.REFRESH_TOKEN_SECRET, {
-    expiresIn: '1h',
+    expiresIn: '1d',
   });
 
   return {token, refreshToken}
@@ -31,75 +31,59 @@ const resolvers = {
   },
   Mutation: {
     checkUser: async (_, { input }) => {
-
-      if (input instanceof Token) {
-        const { token } = input;
-
+      const { token } = input
+      
         if (!token) {
           throw new Error("User is not authorized");
         }        
 
         try {
-          const decoded = jwt.verify(token, process.env.SECRET);  
+          const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);  
 
           const user = await User.findOne({ _id: decoded.userId });        
           if (!user) {
             throw new Error("User does not exist")
-          }        
-          return {user};
+          }   
+          return {user: {name: user.name, _id: user._id, count: user.count}};
         } catch (error) {
           if (error.name === "TokenExpiredError") {
             throw new Error("TokenExpired");
           }
           throw new Error(error.message);
         }
-      } else if (input instanceof RefreshToken) {
-
-        const {refreshToken} = input
+      },
+      refreshToken: async (_, { input }) => {
+        const { refreshToken } = input        
 
         if(!refreshToken){
-          throw new Error("Login Required")
+          throw new Error("Authorization Required")
         }
 
         try {
           const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET)
 
-          if(decoded.user.Id){
-            const newToken = jwt.sign(refreshToken, process.env.REFRESH_TOKEN_SECRET)
-            return {newToken}
+          const user = await User.findOne({_id: decoded.userId})
+
+          if(!user){
+            throw new Error("Authentication Faild")
           }
+
+          const newToken = jwt.sign({userId: decoded.userId}, process.env.REFRESH_TOKEN_SECRET, {
+            expiresIn: "5m"
+          })
+
+          
+
+          return {token: newToken, user: {name: user.name, _id: user._id, count: user.count}}          
         } catch (error) {
-          if (error.name === "TokenExpiredError") {
-            throw new Error("Log In Required");
-          }
+            if (error.name === "TokenExpiredError") {
+              throw new Error("Log In Required");
+            } else {
+              throw new Error(error.message)
+            }
         }
-      } else {
-        throw new Error("Authentication Failed");
-      }
-
-
-
-      /* const { token } = input;
-
-      if (!token) {
-        throw new Error("User is not authorized");
-      }
-      const decoded = jwt.verify(token, process.env.SECRET); 
-
-      try {
-             
-        const user = await User.findOne({ _id: decoded.userId });        
-        if (!user) {
-          throw new Error("User does not exist")
-        }        
-        return {user};
-      } catch (error) {
-        if (error.name === "Token Expired Error") {
-          throw new Error("Session has expired. Please login.");
-        }
-        throw new Error(error.message);
-      } */
-    },
+      } ,
+      
     signup: async (_, { input }) => {
       try {
         const { name, email, password } = input;
