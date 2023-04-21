@@ -1,8 +1,10 @@
-require("dotenv").config();
-const User = require("../models/userModel");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const { PubSub } = require("graphql-subscriptions");
+import * as dotenv from "dotenv"
+import User from "../models/userModel.js"
+import bcrypt from "bcrypt"
+import { PubSub } from "graphql-subscriptions";
+import jwt from "jsonwebtoken"
+
+dotenv.config()
 
 const pubsub = new PubSub();
 
@@ -11,7 +13,8 @@ const resolvers = {
   Query: {},
   Subscription: {
     userCountUpdated: {
-      subscribe: () => pubsub.asyncIterator("USER_COUNT_UPDATED"),
+      subscribe: () => pubsub.asyncIterator(["USER_COUNT_UPDATED"]), 
+      
     },
   },
   Mutation: {
@@ -22,18 +25,11 @@ const resolvers = {
         throw new Error("User is not authorized");
       }
       try {
-        const decoded = jwt.verify(token, process.env.SECRET);
-        /* console.log(decoded.userId) */
-        const user = await User.findOne({ _id: decoded.userId });
-        
+        const decoded = jwt.verify(token, process.env.SECRET);        
+        const user = await User.findOne({ _id: decoded.userId });        
         if (!user) {
           throw new Error("User does not exist")
-        }
-        
-        user.count += 1;
-
-        await user.save();
-        
+        }        
         return {user};
       } catch (error) {
         if (error.name === "TokenExpiredError") {
@@ -94,4 +90,4 @@ const resolvers = {
   },
 };
 
-module.exports = resolvers;
+export default resolvers;

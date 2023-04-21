@@ -1,55 +1,73 @@
-const express = require("express");
-const { ApolloServer } = require("apollo-server-express");
-const { PubSub } = require("graphql-subscriptions");
+import * as dotenv from 'dotenv'
+import { ApolloServer } from '@apollo/server';
+import { createServer } from 'http';
+import { expressMiddleware } from '@apollo/server/express4';
+import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import bodyParser from 'body-parser';
+import express from 'express';
+import { WebSocketServer } from 'ws';
+import { useServer } from 'graphql-ws/lib/use/ws';
+import { PubSub } from 'graphql-subscriptions';
+import cors from 'cors'
+import typeDefs from './graphql/typeDefs.js';
+import resolvers from './graphql/resolvers.js';
+import mongoose from 'mongoose';
+import User from './models/userModel.js';
+
+dotenv.config()
+
+const pubSub = new PubSub();
+
+/* const mockLongLastingOperation = (name) => {
+    setTimeout(() => {
+        pubSub.publish('OPERATION_FINISHED', { operationFinished: { name, endDate: new Date().toDateString() } });
+    }, 1000);
+} */
 
 
-const mongoose = require("mongoose");
-const typeDefs = require("./graphql/typeDefs");
-const resolvers = require("./graphql/resolvers");
-const User = require("./models/userModel.js")
-
-const { createServer } = require("http");
-const { ApolloServerPluginDrainHttpServer } = require ('@apollo/server/plugin/drainHttpServer');
-const { makeExecutableSchema } =require('@graphql-tools/schema');
-const { WebSocketServer } =require('ws');
-const { useServer }= require('graphql-ws/lib/use/ws');
 
 const app = express();
+app.use(cors())
+const httpServer = createServer(app);
+const schema = makeExecutableSchema({ typeDefs, resolvers });
 
-app.use(express.json());
+const wsServer = new WebSocketServer({
+    server: httpServer,
+    path: '/graphql'
+});
 
-const startServer = async () => {
+const wsServerCleanup = useServer({schema}, wsServer);
 
-  const httpServer = createServer(app); 
-  const schema = makeExecutableSchema({ typeDefs, resolvers });
+const apolloServer = new ApolloServer({
+    schema,
+    plugins: [
+       // Proper shutdown for the HTTP server.
+       ApolloServerPluginDrainHttpServer({ httpServer }),
 
-  const server = new ApolloServer({
-    typeDefs,
-    resolvers,
-    subscriptions: {
-      path: "http://localhost:4000/graphql/subscriptions", // specify the path for WebSocket subscriptions
-      onConnect: () => {
-        console.log("WebSocket client connected");
-      },
-      onDisconnect: () => {
-        console.log("WebSocket client disconnected");
-      },
-    },
-    context: ({ req, res }) => ({
-      pubsub, // Pass the pubsub object to the context
-    }),
-  });
-  
-  const changeStream = User.watch();
+       // Proper shutdown for the WebSocket server.
+       {
+        async serverWillStart() {
+            return {
+                async drainServer() {
+                    await wsServerCleanup.dispose();
+                }
+            }
+        }
+       }
+    ]
+});
 
+await apolloServer.start();
+app.use('/graphql', bodyParser.json(), expressMiddleware(apolloServer));
+
+const changeStream = User.watch();
 changeStream.on("change", async (change) => {
-  if (change.operationType === "insert") {
+  if (change.operationType === "insert" || change.operationType === "delete") {
     try {
      const updatedUserCount = await User.countDocuments()
-     if(updatedUserCount !==null){
-      console.log(updatedUserCount)
-      /* pubsub.publish("USER_COUNT_UPDATED", { userCountUpdated: updatedUserCount }) */
-      return {updatedUserCount}
+     if(updatedUserCount !==null){      
+        pubSub.publish("USER_COUNT_UPDATED", { userCountUpdated: {updatedUserCount} });
      }
      
     } catch (error) {
@@ -59,19 +77,11 @@ changeStream.on("change", async (change) => {
   }
 });
 
-  await server.start();
-  server.applyMiddleware({ app });
 
-  mongoose
-    .connect(process.env.MONGO_DB)
-    .then(() => {
-      console.log("conntected to db succesfully");
-      app.listen(process.env.PORT, () => {
-        console.log("Connected To Db and Listening 4000");
-      });
-    })
-    .catch((err) => {
-      console.log(err);
+mongoose.connect(process.env.MONGO_DB).then(() => {
+    httpServer.listen(process.env.PORT, () => {
+    console.log(`🚀 Query endpoint ready at http://localhost:${process.env.PORT}/graphql`);
+    console.log(`🚀 Subscription endpoint ready at ws://localhost:${process.env.PORT}/graphql`);
     });
-};
-startServer().catch((error) => console.log(error.message));
+}).catch(error => {throw new Error("Can't connect to Db")})
+
