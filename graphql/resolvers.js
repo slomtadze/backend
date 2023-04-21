@@ -31,7 +31,55 @@ const resolvers = {
   },
   Mutation: {
     checkUser: async (_, { input }) => {
-      const { token } = input;
+
+      if (input instanceof Token) {
+        const { token } = input;
+
+        if (!token) {
+          throw new Error("User is not authorized");
+        }        
+
+        try {
+          const decoded = jwt.verify(token, process.env.SECRET);  
+
+          const user = await User.findOne({ _id: decoded.userId });        
+          if (!user) {
+            throw new Error("User does not exist")
+          }        
+          return {user};
+        } catch (error) {
+          if (error.name === "TokenExpiredError") {
+            throw new Error("TokenExpired");
+          }
+          throw new Error(error.message);
+        }
+      } else if (input instanceof RefreshToken) {
+
+        const {refreshToken} = input
+
+        if(!refreshToken){
+          throw new Error("Login Required")
+        }
+
+        try {
+          const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET)
+
+          if(decoded.user.Id){
+            const newToken = jwt.sign(refreshToken, process.env.REFRESH_TOKEN_SECRET)
+            return {newToken}
+          }
+        } catch (error) {
+          if (error.name === "TokenExpiredError") {
+            throw new Error("Log In Required");
+          }
+        }
+      } else {
+        throw new Error("Authentication Failed");
+      }
+
+
+
+      /* const { token } = input;
 
       if (!token) {
         throw new Error("User is not authorized");
@@ -46,11 +94,11 @@ const resolvers = {
         }        
         return {user};
       } catch (error) {
-        if (error.name === "TokenExpiredError") {
+        if (error.name === "Token Expired Error") {
           throw new Error("Session has expired. Please login.");
         }
         throw new Error(error.message);
-      }
+      } */
     },
     signup: async (_, { input }) => {
       try {

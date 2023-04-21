@@ -20,8 +20,10 @@ const typeDefs = `
     user: User!
   }
 
+  union TokenInput = token | refreshToken
+
   input CheckUserInput {
-    token: String!
+    input: TokenInput!
   }
 
   input SignupInput {
