@@ -8,6 +8,17 @@ dotenv.config()
 
 const pubsub = new PubSub();
 
+const generateTokens = (_id) => {
+  const token = jwt.sign({ userId: _id }, process.env.ACCESS_TOKEN_SECRET, {
+    expiresIn: '5m',
+  });
+  const refreshToken = jwt.sign({ userId: _id }, process.env.REFRESH_TOKEN_SECRET, {
+    expiresIn: '1h',
+  });
+
+  return {token, refreshToken}
+}
+
 
 const resolvers = {
   Query: {},
@@ -24,8 +35,10 @@ const resolvers = {
       if (!token) {
         throw new Error("User is not authorized");
       }
+      const decoded = jwt.verify(token, process.env.SECRET); 
+
       try {
-        const decoded = jwt.verify(token, process.env.SECRET);        
+             
         const user = await User.findOne({ _id: decoded.userId });        
         if (!user) {
           throw new Error("User does not exist")
@@ -53,11 +66,12 @@ const resolvers = {
         });
 
         await newUser.save();
-        const token = jwt.sign({ userId: newUser._id }, process.env.SECRET, {
-          expiresIn: process.env.EXP_TIME,
-        });
 
-        return { token, user: newUser };
+        const {token, refreshToken} = generateTokens(newUser._id)
+        /* const token = jwt.sign({ userId: newUser._id }, process.env.SECRET, {
+          expiresIn: process.env.EXP_TIME,
+        }); */
+        return { token, refreshToken, user: newUser };
       } catch (error) {
         throw new Error(error.message);
       }
@@ -79,10 +93,12 @@ const resolvers = {
         user.count += 1;
 
         await user.save();
-        const token = jwt.sign({ userId: user._id }, process.env.SECRET, {
+        const {token, refreshToken} = generateTokens(user._id)
+        /* const token = jwt.sign({ userId: newUser._id }, process.env.SECRET, {
           expiresIn: process.env.EXP_TIME,
-        });
-        return { token, user };
+        }); */
+        return { token, refreshToken, user };
+        
       } catch (error) {
         throw new Error(error.message);
       }

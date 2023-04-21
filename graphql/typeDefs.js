@@ -3,8 +3,6 @@ const typeDefs = `
   type User {
     _id: ID!
     name: String!
-    email: String!
-    password: String!
     count: Int!
   }
 
@@ -14,6 +12,7 @@ const typeDefs = `
 
   type AuthPayload {
     token: String!
+    refreshToken: String!
     user: User!
   }
 
