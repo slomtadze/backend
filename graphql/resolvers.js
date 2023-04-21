@@ -1,5 +1,6 @@
 import * as dotenv from "dotenv"
 import User from "../models/userModel.js"
+import Auth from "../models/authModel.js"
 import bcrypt from "bcrypt"
 import { PubSub } from "graphql-subscriptions";
 import jwt from "jsonwebtoken"
@@ -66,11 +67,14 @@ const resolvers = {
         });
 
         await newUser.save();
-
         const {token, refreshToken} = generateTokens(newUser._id)
-        /* const token = jwt.sign({ userId: newUser._id }, process.env.SECRET, {
-          expiresIn: process.env.EXP_TIME,
-        }); */
+
+        const newAuth = new Auth({
+          refreshToken,
+          email
+        })
+        await newAuth.save()
+        
         return { token, refreshToken, user: newUser };
       } catch (error) {
         throw new Error(error.message);
@@ -94,9 +98,20 @@ const resolvers = {
 
         await user.save();
         const {token, refreshToken} = generateTokens(user._id)
-        /* const token = jwt.sign({ userId: newUser._id }, process.env.SECRET, {
-          expiresIn: process.env.EXP_TIME,
-        }); */
+        
+        const auth = await Auth.findOne({ email });
+
+        if(!auth){
+          console.log(email)
+          const newAuth = new Auth({
+            refreshToken,
+            email
+          })
+          await newAuth.save()
+        }else{
+          Auth.findOneAndUpdate({email}, {$set: {refreshToken}})
+        }        
+
         return { token, refreshToken, user };
         
       } catch (error) {
