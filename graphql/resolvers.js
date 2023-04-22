@@ -27,6 +27,8 @@ changeStream.on("change", async (change) => {
   }
 });
 
+
+
 const generateTokens = (_id) => {
   const token = jwt.sign({ userId: _id }, process.env.ACCESS_TOKEN_SECRET, {
     expiresIn: '5m',
@@ -91,7 +93,7 @@ const resolvers = {
           }
 
           const newToken = jwt.sign({userId: decoded.userId}, process.env.REFRESH_TOKEN_SECRET, {
-            expiresIn: "5m"
+            expiresIn: "1m"
           })        
 
           return {token: newToken, user: {name: user.name, _id: user._id, count: user.count}}      
@@ -127,8 +129,14 @@ const resolvers = {
           email
         })
         await newAuth.save()
+
+        const usersCount = await User.countDocuments()
+
+        if(!usersCount){
+          throw new Error("Users count error")
+        }
         
-        return { token, refreshToken, user: newUser };
+        return { token, refreshToken, usersCount, user: newUser };
       } catch (error) {
         throw new Error(error.message);
       }
@@ -155,7 +163,6 @@ const resolvers = {
         const auth = await Auth.findOne({ email });
 
         if(!auth){
-          console.log(email)
           const newAuth = new Auth({
             refreshToken,
             email
@@ -163,10 +170,9 @@ const resolvers = {
           await newAuth.save()
         }else{
           Auth.findOneAndUpdate({email}, {$set: {refreshToken}})
-        }        
-
-        return { token, refreshToken, user };
+        }     
         
+        return { token, refreshToken, user };        
       } catch (error) {
         throw new Error(error.message);
       }

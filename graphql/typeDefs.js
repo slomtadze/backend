@@ -15,6 +15,13 @@ const typeDefs = `#graphql
     refreshToken: String!
     user: User!
   }
+
+  type SignUpPayload {
+    token: String!
+    refreshToken: String!
+    user: User!
+    usersCount: Int!
+  }
   
   type CheckPayload {
     user: User!
@@ -50,7 +57,7 @@ const typeDefs = `#graphql
   type Mutation {
     checkUser(input: CheckUserInput!): CheckPayload
     refreshToken(input: RefreshTokenInput!): RefreshTokenPayload
-    signup(input: SignupInput!): AuthPayload
+    signup(input: SignupInput!): SignUpPayload
     login(input: LoginInput!): AuthPayload
   }
 `;
