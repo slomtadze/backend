@@ -50,7 +50,7 @@ app.use("/graphql", bodyParser.json(), expressMiddleware(apolloServer));
 mongoose
   .connect(process.env.MONGO_DB)
   .then(() => {
-    httpServer.listen(process.env.PORT || 4000, () => {
+    httpServer.listen(process.env.PORT, () => {
       console.log(
         `🚀 Query endpoint ready at http://localhost:${process.env.PORT}/graphql`
       );
