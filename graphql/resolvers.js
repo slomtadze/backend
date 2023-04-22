@@ -15,15 +15,12 @@ changeStream.on("change", async (change) => {
   if (change.operationType === "insert" || change.operationType === "delete") {
     try {
      const updatedUserCount = await User.countDocuments()
-     if(updatedUserCount !==null){  
-        console.log(updatedUserCount)    
+     if(updatedUserCount !==null){     
         pubsub.publish("USER_COUNT_UPDATED", { userCountUpdated: updatedUserCount });
-     }
-     
+     }     
     } catch (error) {
       throw new Error(error.message)
-    }
-    
+    }    
   }
 });
 
@@ -31,7 +28,7 @@ changeStream.on("change", async (change) => {
 
 const generateTokens = (_id) => {
   const token = jwt.sign({ userId: _id }, process.env.ACCESS_TOKEN_SECRET, {
-    expiresIn: '5m',
+    expiresIn: '15s',
   });
   const refreshToken = jwt.sign({ userId: _id }, process.env.REFRESH_TOKEN_SECRET, {
     expiresIn: '1d',
@@ -92,8 +89,8 @@ const resolvers = {
             throw new Error("Authentication Faild")
           }
 
-          const newToken = jwt.sign({userId: decoded.userId}, process.env.REFRESH_TOKEN_SECRET, {
-            expiresIn: "1m"
+          const newToken = jwt.sign({userId: decoded.userId}, process.env.ACCESS_TOKEN_SECRET, {
+            expiresIn: "15s"
           })        
 
           return {token: newToken, user: {name: user.name, _id: user._id, count: user.count}}      
