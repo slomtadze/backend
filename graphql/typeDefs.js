@@ -1,5 +1,5 @@
 
-const typeDefs = `
+const typeDefs = `#graphql
   type User {
     _id: ID!
     name: String!
@@ -44,7 +44,7 @@ const typeDefs = `
   }
 
   type Query {
-    getUser(token: String!): User
+    userCountUpdated: Int
   }
 
   type Mutation {

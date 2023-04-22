@@ -61,21 +61,7 @@ const apolloServer = new ApolloServer({
 await apolloServer.start();
 app.use('/graphql', bodyParser.json(), expressMiddleware(apolloServer));
 
-const changeStream = User.watch();
-changeStream.on("change", async (change) => {
-  if (change.operationType === "insert" || change.operationType === "delete") {
-    try {
-     const updatedUserCount = await User.countDocuments()
-     if(updatedUserCount !==null){      
-        pubSub.publish("USER_COUNT_UPDATED", { userCountUpdated: {updatedUserCount} });
-     }
-     
-    } catch (error) {
-      throw new Error(error.message)
-    }
-    
-  }
-});
+
 
 
 mongoose.connect(process.env.MONGO_DB).then(() => {

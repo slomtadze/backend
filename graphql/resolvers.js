@@ -9,6 +9,24 @@ dotenv.config()
 
 const pubsub = new PubSub();
 
+const changeStream = User.watch();
+
+changeStream.on("change", async (change) => {
+  if (change.operationType === "insert" || change.operationType === "delete") {
+    try {
+     const updatedUserCount = await User.countDocuments()
+     if(updatedUserCount !==null){  
+        console.log(updatedUserCount)    
+        pubsub.publish("USER_COUNT_UPDATED", { userCountUpdated: updatedUserCount });
+     }
+     
+    } catch (error) {
+      throw new Error(error.message)
+    }
+    
+  }
+});
+
 const generateTokens = (_id) => {
   const token = jwt.sign({ userId: _id }, process.env.ACCESS_TOKEN_SECRET, {
     expiresIn: '5m',
@@ -22,7 +40,11 @@ const generateTokens = (_id) => {
 
 
 const resolvers = {
-  Query: {},
+  Query: {
+    userCountUpdated() {
+      return updatedUserCount;
+    },
+  },
   Subscription: {
     userCountUpdated: {
       subscribe: () => pubsub.asyncIterator(["USER_COUNT_UPDATED"]), 
@@ -70,11 +92,10 @@ const resolvers = {
 
           const newToken = jwt.sign({userId: decoded.userId}, process.env.REFRESH_TOKEN_SECRET, {
             expiresIn: "5m"
-          })
+          })        
 
-          
-
-          return {token: newToken, user: {name: user.name, _id: user._id, count: user.count}}          
+          return {token: newToken, user: {name: user.name, _id: user._id, count: user.count}}      
+              
         } catch (error) {
             if (error.name === "TokenExpiredError") {
               throw new Error("Log In Required");
